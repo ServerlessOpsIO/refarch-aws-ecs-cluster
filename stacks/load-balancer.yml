@@ -1,0 +1,112 @@
+Parameters:
+  StackParentName:
+    Type: String
+    Description: "Name of parent stack"
+
+  StackSsmParamPrefix:
+    Type: String
+    Description: "Prefix for SSM Params created by this stack"
+
+  VpcId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>
+    Description: "VPC ID"
+
+  VpcSubnets:
+    Type: AWS::SSM::Parameter::Value<List<AWS::EC2::Subnet::Id>>
+    Description: "VPC Subnets ALB will cover"
+
+
+Resources:
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId:
+        Ref: VpcId
+      GroupDescription: "Access ALB in front of ECS"
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: -1
+      Tags:
+        - Key: Name
+          Value:
+            Fn::Sub: "${StackParentName}-alb"
+
+  Alb:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name:
+        Ref: StackParentName
+      Subnets:
+        Ref: VpcSubnets
+      SecurityGroups:
+        - Ref: AlbSecurityGroup
+      Tags:
+        - Key: Name
+          Value:
+            Ref: StackParentName
+
+  # ALB's need a target group so we create this dummy default one.
+  AlbDefaultTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name:
+        Ref: StackParentName
+      VpcId:
+        Ref: VpcId
+      Port: 80
+      Protocol: HTTP
+
+  AlbListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn:
+        Ref: Alb
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn:
+            Ref: AlbDefaultTargetGroup
+
+  AlbSecurityGroupIdSsmParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name:
+        Fn::Join:
+          - '/'
+          - - Ref: StackSsmParamPrefix
+            - "AlbSecurityGroupId"
+      Description: "ALB Security Group ID"
+      Type: String
+      Value:
+        Ref: AlbSecurityGroup
+
+  AlbArnSsmParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name:
+        Fn::Join:
+          - '/'
+          - - Ref: StackSsmParamPrefix
+            - "AlbArn"
+      Description: "ALB Arn"
+      Type: String
+      Value:
+        Ref: Alb
+
+
+  AlbUrlSsmParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name:
+        Fn::Join:
+          - '/'
+          - - Ref: StackSsmParamPrefix
+            - "AlbUrl"
+      Description: "ALB URL"
+      Type: String
+      Value:
+        Fn::GetAtt:
+          - Alb
+          - DNSName
+
