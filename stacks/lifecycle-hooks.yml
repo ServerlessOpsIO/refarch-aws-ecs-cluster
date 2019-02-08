@@ -1,0 +1,97 @@
+Parameters:
+  EcsAsgName:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: "ECS cluster ASG name"
+
+  StackSsmParamPrefix:
+    Type: String
+    Description: "Prefix for SSM Params created by this stack"
+
+
+Resources:
+  AsgTerminationSnsTopic:
+    Type: "AWS::SNS::Topic"
+
+  AsgTerminationHookRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - autoscaling.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AutoScalingNotificationAccessRole"
+
+  AsgTerminatingHook:
+    Type: "AWS::AutoScaling::LifecycleHook"
+    Properties:
+      AutoScalingGroupName:
+        Ref: EcsAsgName
+      DefaultResult: ABANDON
+      HeartbeatTimeout: 900
+      LifecycleTransition: "autoscaling:EC2_INSTANCE_TERMINATING"
+      NotificationTargetARN:
+        Ref: AsgTerminationSnsTopic
+      RoleARN:
+        Fn::GetAtt:
+          - AsgTerminationHookRole
+          - Arn
+
+  LifecycleHookLambdaPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: "Default lifecycle hook Lambda policy"
+      Path: "/"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "autoscaling:CompleteLifecycleAction"
+              - "logs:CreateLogGroup"
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+              - "ec2:DescribeInstances"
+              - "ec2:DescribeInstanceAttribute"
+              - "ec2:DescribeInstanceStatus"
+              - "ec2:DescribeHosts"
+              - "ecs:ListContainerInstances"
+              - "ecs:SubmitContainerStateChange"
+              - "ecs:SubmitTaskStateChange"
+              - "ecs:DescribeContainerInstances"
+              - "ecs:UpdateContainerInstancesState"
+              - "ecs:ListTasks"
+              - "ecs:DescribeTasks"
+            Resource: "*"
+
+  AsgTerminationSnsTopicArnSsmParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name:
+        Fn::Join:
+          - '/'
+          - - Ref: StackSsmParamPrefix
+            - "AsgTerminationSnsTopicArn"
+      Description: "ASG termination SNS topic ARN"
+      Type: String
+      Value:
+        Ref: AsgTerminationSnsTopic
+
+  LifecycleHookLambdaPolicyArnSsmParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name:
+        Fn::Join:
+          - '/'
+          - - Ref: StackSsmParamPrefix
+            - "LifecycleHookLambdaPolicyArn"
+      Description: "Lifecycle hook IAM policy"
+      Type: String
+      Value:
+        Ref: LifecycleHookLambdaPolicy
+

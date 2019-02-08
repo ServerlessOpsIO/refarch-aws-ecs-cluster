@@ -326,3 +326,28 @@ Resources:
             }
           }
 
+  EcsClusterNameSsmParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name:
+        Fn::Join:
+          - '/'
+          - - Ref: StackSsmParamPrefix
+            - "EcsClusterName"
+      Description: "ECS cluster name"
+      Type: String
+      Value:
+        Ref: EcsCluster
+
+  EcsAsgNameSsmParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name:
+        Fn::Join:
+          - '/'
+          - - Ref: StackSsmParamPrefix
+            - "EcsAsgName"
+      Description: "ECS ASG name"
+      Type: String
+      Value:
+        Ref: EcsAutoScalingGroup
