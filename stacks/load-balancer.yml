@@ -81,18 +81,18 @@ Resources:
       Value:
         Ref: AlbSecurityGroup
 
-  AlbArnSsmParam:
+  AlbListenerArnSsmParam:
     Type: AWS::SSM::Parameter
     Properties:
       Name:
         Fn::Join:
           - '/'
           - - Ref: StackSsmParamPrefix
-            - "AlbArn"
-      Description: "ALB Arn"
+            - "AlbListenerArn"
+      Description: "ALB Listener Arn"
       Type: String
       Value:
-        Ref: Alb
+        Ref: AlbListener
 
 
   AlbUrlSsmParam:
