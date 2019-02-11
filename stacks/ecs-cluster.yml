@@ -229,6 +229,28 @@ Resources:
                 - ecs:UpdateService
               Resource: "*"
 
+  EcsServiceDefaultPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: "Default IAM policy for ECS cluster services"
+      Path: "/"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "ec2:AuthorizeSecurityGroupIngress"
+              - "ec2:Describe*"
+              - "elasticloadbalancing:DeregisterInstancesFromLoadBalancer"
+              - "elasticloadbalancing:Describe*"
+              - "elasticloadbalancing:RegisterInstancesWithLoadBalancer"
+              - "elasticloadbalancing:DeregisterTargets"
+              - "elasticloadbalancing:DescribeTargetGroups"
+              - "elasticloadbalancing:DescribeTargetHealth"
+              - "elasticloadbalancing:RegisterTargets"
+            Resource: "*"
+
+
   EcsCloudWatchParameter:
     Type: AWS::SSM::Parameter
     Properties:
@@ -342,3 +364,17 @@ Resources:
       Type: String
       Value:
         Ref: EcsAutoScalingGroup
+
+  EcsServiceDefaultPolicyArnSsmParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name:
+        Fn::Join:
+          - '/'
+          - - Ref: StackSsmParamPrefix
+            - "EcsServiceDefaultPolicyArn"
+      Description: "ECS service default IAM policy ARN"
+      Type: String
+      Value:
+        Ref: EcsServiceDefaultPolicy
+
